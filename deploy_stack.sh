@@ -65,4 +65,4 @@ case "$arch" in
    ;;
 esac
 
-docker stack deploy func --compose-file $composefile
+docker stack deploy docker-Faas --compose-file $composefile

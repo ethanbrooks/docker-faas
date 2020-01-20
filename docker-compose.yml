@@ -1,11 +1,12 @@
 version: "3.3"
 services:
-    gateway:
+    gateway:        
         ports:
             - 8080:8080
         image: openfaas/gateway:0.18.10
         networks:
             - functions
+            - docker-Traefik_private
         environment:
             functions_provider_url: "http://faas-swarm:8080/"
             read_timeout: "5m5s" # Maximum time to read HTTP request
@@ -24,6 +25,13 @@ services:
             auth_proxy_url: "${AUTH_URL:-}"
             auth_proxy_pass_body: "false"
         deploy:
+            labels:
+                traefik.enable: "true"
+                traefik.http.routers.gateway.tls: "true"       
+                traefik.http.routers.gateway.rule: Host(`gateway.localhost.conduit3.com`)
+                traefik.http.routers.gateway.entrypoints: https
+                traefik.http.routers.gateway.tls.certresolver: route53_resolver
+                traefik.http.services.gateway.loadbalancer.server.port: 8080
             resources:
                 # limits:   # Enable if you want to limit memory usage
                 #     memory: 200M
@@ -73,7 +81,7 @@ services:
     faas-swarm:
         volumes:
             - "/var/run/docker.sock:/var/run/docker.sock"
-        image: openfaas/faas-swarm:0.8.2
+        image: openfaas/faas-swarm:0.8.4
         networks:
             - functions
         environment:
@@ -102,7 +110,7 @@ services:
             - basic-auth-password
 
     nats:
-        image: nats-streaming:0.11.2
+        image: nats-streaming:latest
         # Uncomment the following port mappings if you wish to expose the
         # NATS client and/or management ports you must also add `-m 8222` to the command
         # ports:
@@ -122,7 +130,7 @@ services:
                     - "node.platform.os == linux"
 
     queue-worker:
-        image: openfaas/queue-worker:0.8.4
+        image: openfaas/queue-worker:0.9.0
         networks:
             - functions
         environment:
@@ -155,7 +163,7 @@ services:
     # Start monitoring
 
     prometheus:
-        image: prom/prometheus:v2.11.0
+        image: prom/prometheus:latest
         environment:
             no_proxy: "gateway"
         configs:
@@ -182,7 +190,7 @@ services:
                     memory: 200M
 
     alertmanager:
-        image: prom/alertmanager:v0.18.0
+        image: prom/alertmanager:latest
         environment:
             no_proxy: "gateway"
         command:
@@ -224,6 +232,8 @@ networks:
         attachable: true
         labels:
             - "openfaas=true"
+    docker-Traefik_private:
+        external: true
 
 secrets:
     basic-auth-user:
